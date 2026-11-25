@@ -1,0 +1,47 @@
+/* ===== DESIGN : modifiez ce fichier pour changer l'apparence =====
+   Logo : déposez assets/logo.png (affiché automatiquement dans l'en-tête).
+   Photo de fond : décommentez --fond-photo et pointez vers assets/fond.jpg */
+:root {
+  --couleur-fond: #f3efe6;
+  --couleur-carte: #ffffff;
+  --couleur-texte: #26302b;
+  --couleur-principale: #2f5d50;   /* boutons, jours cochés */
+  --couleur-alerte: #b5472f;
+  --couleur-discrete: #8a938d;
+  --police: "Georgia", "Times New Roman", serif;
+  --police-titres: "Georgia", serif;
+  --rayon: 10px;
+  --logo-hauteur: 40px;
+  --fond-photo: none;              /* ex: url("../assets/fond.jpg") */
+}
+
+/* ===== Mise en page ===== */
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--couleur-fond) var(--fond-photo) center/cover fixed; color: var(--couleur-texte); font: 17px/1.5 var(--police); }
+header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--couleur-carte); border-bottom: 1px solid #0001; }
+header h1 { flex: 1; margin: 0; font: 600 1.25rem var(--police-titres); }
+.logo { height: var(--logo-hauteur); }
+nav { display: flex; gap: 6px; padding: 10px 16px; overflow-x: auto; }
+main, .box { max-width: 720px; margin: 0 auto; padding: 16px; }
+.box { margin-top: 12vh; background: var(--couleur-carte); border-radius: var(--rayon); display: grid; gap: 10px; }
+button { font: inherit; padding: 8px 14px; border: 0; border-radius: var(--rayon); background: var(--couleur-principale); color: #fff; cursor: pointer; }
+button.ghost, nav button { background: transparent; color: var(--couleur-texte); border: 1px solid #0003; }
+nav button.on { background: var(--couleur-principale); color: #fff; }
+input, select { font: inherit; padding: 8px; border: 1px solid #0003; border-radius: var(--rayon); width: 100%; margin-bottom: 6px; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--couleur-principale); outline-offset: 2px; }
+.bandeau { padding: 10px 14px; border-radius: var(--rayon); background: #0001; margin-bottom: 12px; }
+.compteur { font: 700 3rem var(--police-titres); text-align: center; }
+.compteur small { display: block; font: 1rem var(--police); color: var(--couleur-discrete); }
+.ligne { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; margin: 6px 0; background: var(--couleur-carte); border-radius: var(--rayon); }
+.ligne button { padding: 12px 20px; }
+.ligne input, .ligne select { margin: 0; }
+.discret { color: var(--couleur-discrete); }
+.grille { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.jour { aspect-ratio: 1; display: grid; place-items: center; border-radius: var(--rayon); background: var(--couleur-carte); border: 2px solid transparent; font: inherit; color: inherit; padding: 0; }
+.jour.on { background: var(--couleur-principale); color: #fff; }
+.jour.locked { opacity: .4; cursor: default; }
+.jour.vide { visibility: hidden; }
+.jour.ferme { background: repeating-linear-gradient(45deg, #0001, #0001 4px, transparent 4px, transparent 8px); }
+.centre { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; text-transform: capitalize; }
+h2, h3 { font-family: var(--police-titres); }
+[hidden] { display: none !important; }
