@@ -76,7 +76,7 @@ const VIEWS = {
         title="${closed.has(d) ? 'Pas de repas' : ''}">${+d.slice(8)}</button>`)
     }
     const n = Object.values(st.res).filter(x => !x.cancelled_at).length
-    return `${monthNav()}<div class="bandeau">${banner}</div><div class="grille">${cells.join('')}</div>
+    return `${monthNav()}<div class="bandeau">${banner}</div><div class="grille">${['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(j => `<span class="entete">${j}</span>`).join('')}${cells.join('')}</div>
       <p class="discret">${n} dîner${n > 1 ? 's' : ''} réservé${n > 1 ? 's' : ''} ce mois-ci.</p>`
   },
 
