@@ -45,3 +45,17 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .centre { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; text-transform: capitalize; }
 h2, h3 { font-family: var(--police-titres); }
 [hidden] { display: none !important; }
+
+/* ===== Ajouts : en-tête du calendrier, pastilles, graphiques ===== */
+.entete { text-align: center; font-size: .85rem; color: var(--couleur-discrete); padding-bottom: 2px; }
+.pastille { font-size: .7rem; padding: 2px 8px; border-radius: 99px; background: var(--couleur-alerte); color: #fff; margin-left: 6px; white-space: nowrap; }
+.pastille.cote { background: var(--couleur-discrete); }
+.barres { display: flex; gap: 4px; align-items: flex-end; height: 150px; overflow-x: auto; padding: 8px; background: var(--couleur-carte); border-radius: var(--rayon); }
+.col { flex: 1; min-width: 16px; height: 100%; display: flex; flex-direction: column; align-items: center; }
+.pile { flex: 1; width: 100%; display: flex; align-items: flex-end; gap: 1px; }
+.pile i { flex: 1; display: block; min-height: 1px; border-radius: 3px 3px 0 0; }
+.cmd { background: #0003; }
+.pris { background: var(--couleur-principale); }
+.col small { font-size: .65rem; color: var(--couleur-discrete); }
+.jauge { flex: 1; height: 6px; background: #0001; border-radius: 3px; }
+.jauge i { display: block; height: 100%; background: var(--couleur-alerte); border-radius: 3px; }
