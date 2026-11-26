@@ -55,6 +55,9 @@ async function render() {
 const filt = () => document.querySelectorAll('[data-n]').forEach(el => (el.hidden = !el.dataset.n.includes(st.q.toLowerCase())))
 const monthNav = () => `<div class="centre"><button class="ghost" data-act="month" data-n="-1">‹</button><strong>${fmt(st.month, { month: 'long', year: 'numeric' })}</strong><button class="ghost" data-act="month" data-n="1">›</button></div>`
 const range = days => [days[0], days.at(-1)]
+const isWe = d => [0, 6].includes(new Date(d + 'T12:00').getDay())
+const HEAD = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(j => `<span class="entete">${j}</span>`).join('')
+const lead = m => '<span class="jour vide"></span>'.repeat((new Date(m + 'T12:00').getDay() + 6) % 7)
 const all = async build => { const out = []; for (let i = 0; ; i += 1000) { const { data } = await build().range(i, i + 999); out.push(...(data || [])); if ((data || []).length < 1000) return out } }
 const bars = (rows, mx = Math.max(1, ...rows.flatMap(r => [r[1], r[2]]))) => `<div class="barres">${rows.map(([l, a, b]) => `<div class="col" title="${l} : ${b} pris / ${a} commandés"><div class="pile"><i class="cmd" style="height:${a / mx * 100}%"></i><i class="pris" style="height:${b / mx * 100}%"></i></div><small>${l}</small></div>`).join('')}</div>`
 
@@ -76,8 +79,8 @@ const VIEWS = {
     const cells = Array((new Date(st.month + 'T12:00').getDay() + 6) % 7).fill('<span class="jour vide"></span>')
     for (const d of days) {
       const on = st.res[d] && !st.res[d].cancelled_at
-      const can = god ? true : closed.has(d) ? false : on ? (d > t || (d === t && h < HEURE_LIMITE)) : (open && d > t)
-      cells.push(`<button class="jour ${on ? 'on' : ''} ${closed.has(d) ? 'ferme' : ''} ${can ? '' : 'locked'}" ${can ? `data-act="toggle" data-day="${d}"` : ''}
+      const can = isWe(d) ? (god && on) : god ? true : closed.has(d) ? false : on ? (d > t || (d === t && h < HEURE_LIMITE)) : (open && d > t)
+      cells.push(`<button class="jour ${on ? 'on' : ''} ${closed.has(d) || isWe(d) ? 'ferme' : ''} ${can ? '' : 'locked'}" ${can ? `data-act="toggle" data-day="${d}"` : ''}
         title="${closed.has(d) ? 'Pas de repas' : ''}">${+d.slice(8)}</button>`)
     }
     const n = Object.values(st.res).filter(x => !x.cancelled_at).length
@@ -114,9 +117,8 @@ const VIEWS = {
     r.data.forEach(x => (by[x.day] ??= []).push(x))
     const rep = new Set(r.data.map(x => x.user_id)).size
     return `${monthNav()}<div class="bandeau">${rep} personne(s) ont répondu, sur ${cp.count ?? 0} client(s) actifs.</div>
-      ${days.map(d => `<div class="ligne"><span>${fmt(d, { weekday: 'long', day: 'numeric' })}</span>
-        <strong>${closed.has(d) ? 'fermé' : (by[d]?.length ?? 0)}</strong>
-        <button class="ghost" data-act="closeday" data-day="${d}" data-closed="${closed.has(d) ? 1 : 0}">${closed.has(d) ? 'Rouvrir' : 'Fermer'}</button></div>`).join('')}`
+      <p class="discret">Nombre de repas commandés par soir. Touchez un soir pour le fermer ou le rouvrir.</p>
+      <div class="grille">${HEAD}${lead(st.month)}${days.map(d => { const we = isWe(d), c = closed.has(d); return `<button class="jour ${we || c ? 'ferme' : ''} ${we ? 'locked' : ''}" ${we ? '' : `data-act="closeday" data-day="${d}" data-closed="${c ? 1 : 0}"`}><span>${+d.slice(8)}<br><strong>${we || c ? '' : (by[d]?.length ?? 0)}</strong></span></button>` }).join('')}</div>`
   },
 
   async camp() {
@@ -200,7 +202,7 @@ const ACT = {
     fail(await sb.from('reservations').upsert({ user_id: uid, day: st.day, cancelled_at: null, picked_up_at: now(), validated_by: st.me.id, added_by: st.me.id }, { onConflict: 'user_id,day' }))
   },
   async endservice() { fail(await sb.from('services').upsert({ day: st.day, closed_at: now() })) },
-  async closeday(b) { const t = sb.from('closed_days'); fail(await (b.dataset.closed === '1' ? t.delete().eq('day', b.dataset.day) : t.insert({ day: b.dataset.day }))) },
+  async closeday(b) { if (!confirm(b.dataset.closed === '1' ? 'Rouvrir ce soir ?' : 'Fermer ce soir ? Les clients ne pourront plus le cocher.')) return; const t = sb.from('closed_days'); fail(await (b.dataset.closed === '1' ? t.delete().eq('day', b.dataset.day) : t.insert({ day: b.dataset.day }))) },
   async campaign() {
     const m = $('#cm').value, d = $('#cd').value; if (!m || !d) return alert('Choisissez un mois et une date limite.')
     fail(await sb.from('campaigns').upsert({ month: m + '-01', deadline: new Date(d).toISOString(), status: 'open' }))
