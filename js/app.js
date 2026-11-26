@@ -183,8 +183,10 @@ const ACT = {
   edit: b => { st.target = b.dataset.id; st.targetName = b.dataset.name },
   back: () => { st.target = null },
   async resetcamp(b) {
-    if (!confirm('Supprimer TOUTES les réservations de ce mois ? Action irréversible.')) return
-    const d = daysOf(b.dataset.day); fail(await sb.from('reservations').delete().gte('day', d[0]).lte('day', d.at(-1)))
+    if (!confirm('Supprimer cette campagne, toutes ses réservations, ses soirs fermés et ses clôtures de service ? Action irréversible.')) return
+    const d = daysOf(b.dataset.day), z = d.at(-1)
+    for (const t of ['reservations', 'closed_days', 'services']) fail(await sb.from(t).delete().gte('day', d[0]).lte('day', z))
+    fail(await sb.from('campaigns').delete().eq('month', b.dataset.day))
   },
   month: b => (st.month = shift(st.month, +b.dataset.n)),
   async toggle(b) {
