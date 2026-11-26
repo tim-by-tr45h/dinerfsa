@@ -60,3 +60,11 @@ h2, h3 { font-family: var(--police-titres); }
 .jauge { flex: 1; height: 6px; background: #0001; border-radius: 3px; }
 .jauge i { display: block; height: 100%; background: var(--couleur-alerte); border-radius: 3px; }
 .jour span { text-align: center; line-height: 1.15; font-size: .95rem; }
+
+/* ===== Page d'accueil (carte mentale) ===== */
+.carte { position: relative; width: 100%; max-width: 560px; aspect-ratio: 1; margin: 0 auto; }
+.liens { position: absolute; inset: 0; width: 100%; height: 100%; color: var(--couleur-discrete); }
+.liens line { stroke: currentColor; stroke-width: .4; stroke-dasharray: 1.5 1.5; }
+.coeur { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 36%; text-align: center; font: 600 1.3rem var(--police-titres); }
+.coeur img { display: block; max-width: 100%; max-height: 100%; margin: 0 auto; }
+.noeud { position: absolute; transform: translate(-50%, -50%); padding: 10px 12px; font-size: .85rem; white-space: nowrap; border-radius: 99px; box-shadow: 0 2px 6px #0002; }
