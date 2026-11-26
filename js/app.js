@@ -128,7 +128,7 @@ const VIEWS = {
       <p class="discret">Mois concerné, puis date limite de saisie.</p>
       <input id="cm" type="month"><input id="cd" type="datetime-local">
       <button data-act="campaign">Lancer la campagne</button>
-      <h3>Campagnes</h3>${data.map(c => `<div class="ligne"><span>${fmt(c.month, { month: 'long', year: 'numeric' })} <span class="discret">${c.status === 'open' ? 'jusqu\'au ' + new Date(c.deadline).toLocaleDateString('fr-FR') : 'clôturée'}</span></span>
+      <h3>Campagnes réalisées</h3>${data.map(c => `<div class="ligne"><span>${fmt(c.month, { month: 'long', year: 'numeric' })} <span class="discret">${c.status === 'open' ? 'jusqu\'au ' + new Date(c.deadline).toLocaleDateString('fr-FR') : 'clôturée'}</span></span>
         <span>${c.status === 'open' ? `<button class="ghost" data-act="closecamp" data-day="${c.month}">Clôturer</button>` : ''} <button class="ghost" data-act="resetcamp" data-day="${c.month}">Remettre à zéro</button></span></div>`).join('')}`
   },
 
