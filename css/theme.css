@@ -59,3 +59,4 @@ h2, h3 { font-family: var(--police-titres); }
 .col small { font-size: .65rem; color: var(--couleur-discrete); }
 .jauge { flex: 1; height: 6px; background: #0001; border-radius: 3px; }
 .jauge i { display: block; height: 100%; background: var(--couleur-alerte); border-radius: 3px; }
+.jour span { text-align: center; line-height: 1.15; font-size: .95rem; }
