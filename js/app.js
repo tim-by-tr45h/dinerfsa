@@ -37,7 +37,7 @@ async function boot() {
   st.me = data
   const f = await sb.from('settings').select('value').eq('key', 'features').maybeSingle()
   st.feat = { ...DEF, ...(f.data?.value || {}) }
-  sb.channel('rt').on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, () => st.tab === 'pointage' && render()).subscribe()
+  sb.channel('rt').on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, () => ['pointage', 'stats', 'mois'].includes(st.tab) && render()).subscribe()
   render()
 }
 
@@ -45,11 +45,12 @@ async function render() {
   const tabs = tabsFor(st.me.role)
   if (!tabs.length) return (app.innerHTML = '<p class="bandeau">Aucune page n\'est activée pour votre profil.</p>')
   if (!tabs.some(t => t[0] === st.tab)) st.tab = tabs[0][0]
-  const body = await VIEWS[st.tab]()
+  let body
+  try { body = await VIEWS[st.tab]() } catch (e) { body = `<div class="bandeau">Erreur : ${esc(e.message)}</div>` }
   app.innerHTML = `<header><img class="logo" src="assets/logo.png" alt="" onerror="this.remove()"><h1>${APP_NAME}</h1>
     <button class="ghost" data-act="logout">Quitter</button></header>
     <nav>${tabs.map(([id, l]) => `<button class="${id === st.tab ? 'on' : ''}" data-act="tab" data-id="${id}">${l}</button>`).join('')}</nav>
-    <main>${body}</main>`
+    <main>${body}</main><p class="discret" style="text-align:center;font-size:.7rem">v4</p>`
   filt()
 }
 const filt = () => document.querySelectorAll('[data-n]').forEach(el => (el.hidden = !el.dataset.n.includes(st.q.toLowerCase())))
@@ -58,7 +59,7 @@ const range = days => [days[0], days.at(-1)]
 const isWe = d => [0, 6].includes(new Date(d + 'T12:00').getDay())
 const HEAD = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(j => `<span class="entete">${j}</span>`).join('')
 const lead = m => '<span class="jour vide"></span>'.repeat((new Date(m + 'T12:00').getDay() + 6) % 7)
-const all = async build => { const out = []; for (let i = 0; ; i += 1000) { const { data } = await build().range(i, i + 999); out.push(...(data || [])); if ((data || []).length < 1000) return out } }
+const all = async build => { const out = []; for (let i = 0; ; i += 1000) { const { data, error } = await build().range(i, i + 999); if (error) throw new Error(error.message); out.push(...(data || [])); if ((data || []).length < 1000) return out } }
 const bars = (rows, mx = Math.max(1, ...rows.flatMap(r => [r[1], r[2]]))) => `<div class="barres">${rows.map(([l, a, b]) => `<div class="col" title="${l} : ${b} pris / ${a} commandés"><div class="pile"><i class="cmd" style="height:${a / mx * 100}%"></i><i class="pris" style="height:${b / mx * 100}%"></i></div><small>${l}</small></div>`).join('')}</div>`
 
 // ---------- Vues ----------
@@ -134,17 +135,18 @@ const VIEWS = {
   async stats() {
     const days = daysOf(st.month), [a, z] = range(days), t = today()
     const r = await all(() => sb.from('reservations').select('user_id,day,picked_up_at,set_aside,profiles!user_id(full_name)').is('cancelled_at', null).gte('day', shift(st.month, -5)).lte('day', z).order('id'))
-    const past = r.filter(x => x.day < t), cur = past.filter(x => x.day >= a)
+    const cur = r.filter(x => x.day >= a), past = r.filter(x => x.day < t), pc = cur.filter(x => x.day < t)
     const grp = (rows, key) => { const g = {}; rows.forEach(x => { const o = (g[key(x)] ??= [0, 0]); o[0]++; if (x.picked_up_at) o[1]++ }); return g }
-    const byDay = grp(cur, x => x.day), byMonth = grp(past, x => x.day.slice(0, 7)), byUser = {}
+    const byDay = grp(cur, x => x.day), byMonth = grp(r, x => x.day.slice(0, 7)), byUser = {}
     past.forEach(x => { const o = (byUser[x.user_id] ??= { n: name(x), c: 0, m: 0 }); o.c++; if (!x.picked_up_at) o.m++ })
-    const ord = cur.length, pris = cur.filter(x => x.picked_up_at).length, nights = Object.keys(byDay).length
+    const ord = cur.length, pris = cur.filter(x => x.picked_up_at).length, pcp = pc.filter(x => x.picked_up_at).length
+    const n1 = Object.keys(byDay).length, n2 = new Set(pc.map(x => x.day)).size
     const top = Object.values(byUser).filter(u => u.m).sort((x, y) => y.m - x.m).slice(0, 10)
-    return `${monthNav()}<div class="bandeau">${ord} commandés, ${pris} pris (${ord ? Math.round(100 * pris / ord) : 0} %). Moyenne par soir : ${nights ? (ord / nights).toFixed(1) : 0} commandés, ${nights ? (pris / nights).toFixed(1) : 0} pris. ${cur.filter(x => x.set_aside).length} mis de côté.</div>
+    return `${monthNav()}<div class="bandeau">${ord} repas commandés ce mois-ci, ${pris} déjà pris (dont ${cur.filter(x => x.set_aside).length} mis de côté).<br>Soirs passés : ${pc.length} commandés, ${pcp} pris (${pc.length ? Math.round(100 * pcp / pc.length) : 0} %).<br>Moyenne par soir : ${n1 ? (ord / n1).toFixed(1) : 0} commandés${n2 ? ', ' + (pcp / n2).toFixed(1) + ' pris' : ''}.</div>
       <h3>Par soir</h3>${bars(Object.entries(byDay).sort().map(([d, v]) => [+d.slice(8), v[0], v[1]]))}
-      <p class="discret">Gris : commandés. Vert : pris. Seuls les soirs passés sont comptés.</p>
+      <p class="discret">Gris : commandés. Vert : pris.</p>
       <h3>Par mois</h3>${bars(Object.entries(byMonth).sort().map(([m, v]) => [fmt(m + '-01', { month: 'short' }), v[0], v[1]]))}
-      <h3>Commandés mais non pris (6 mois)</h3>
+      <h3>Commandés mais non pris (6 mois, soirs passés)</h3>
       ${top.map(u => `<div class="ligne"><span>${esc(u.n)}</span><div class="jauge"><i style="width:${Math.round(100 * u.m / u.c)}%"></i></div><span class="discret">${u.m}/${u.c}</span></div>`).join('') || '<p class="discret">Aucun non-retrait.</p>'}`
   },
 
