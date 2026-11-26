@@ -52,7 +52,7 @@ async function render() {
   app.innerHTML = `<header><img class="logo" src="assets/logo.png" alt="" onerror="this.remove()"><h1>${APP_NAME}</h1>
     <button class="ghost" data-act="logout">Quitter</button></header>
 ${st.tab === 'accueil' ? '' : `<nav>${tabs.map(([id, l]) => `<button class="${id === st.tab ? 'on' : ''}" data-act="tab" data-id="${id}">${l}</button>`).join('')}</nav>`}
-    <main>${body}</main><p class="discret" style="text-align:center;font-size:.7rem">v5</p>`
+    <main>${body}</main><p class="discret" style="text-align:center;font-size:.7rem">v6</p>`
   filt()
 }
 const filt = () => document.querySelectorAll('[data-n]').forEach(el => (el.hidden = !el.dataset.n.includes(st.q.toLowerCase())))
@@ -137,7 +137,7 @@ const VIEWS = {
   async accueil() {
     const items = tabsFor(st.me.role).filter(t => t[0] !== 'accueil'), n = items.length
     const pos = items.map((t, i) => { const a = (-90 + i * 360 / n) * Math.PI / 180; return [t, 50 + 38 * Math.cos(a), 50 + 38 * Math.sin(a)] })
-    return `<div class="carte"><svg class="liens" viewBox="0 0 100 100">${pos.map(([, x, y]) => `<line x1="50" y1="50" x2="${x}" y2="${y}"/>`).join('')}</svg>
+    return `<div class="carte"><svg class="liens" viewBox="0 0 100 100">${pos.map(([, x, y]) => `<line x1="${50 + (x - 50) * 0.5}" y1="${50 + (y - 50) * 0.5}" x2="${x}" y2="${y}"/>`).join('')}</svg>
       <div class="coeur"><img src="assets/logo-accueil.png" alt="${APP_NAME}" onerror="this.replaceWith(document.createTextNode(this.alt))"></div>
       ${pos.map(([t, x, y]) => `<button class="noeud" style="left:${x}%;top:${y}%" data-act="tab" data-id="${t[0]}">${ICON[t[0]] || ''} ${t[1]}</button>`).join('')}</div>`
   },
