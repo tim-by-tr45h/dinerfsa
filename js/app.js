@@ -16,7 +16,9 @@ const st = { feat: null, target: null, me: null, tab: null, month: today().slice
 
 const ALL = [['pointage', 'Pointage'], ['mois', 'Mois'], ['camp', 'Campagne'], ['stats', 'Stats'], ['clients', 'Clients'], ['cal', 'Mes dîners']]
 const DEF = { client: ['cal'], admin: ['pointage', 'mois', 'camp', 'stats', 'clients', 'cal'] }
-const tabsFor = r => r === 'creator' ? [...ALL, ['equipe', 'Équipe'], ['reglages', 'Réglages']] : ALL.filter(t => (st.feat[r] || []).includes(t[0]))
+const HOME = ['accueil', 'Accueil']
+const tabsFor = r => r === 'creator' ? [HOME, ...ALL, ['equipe', 'Équipe'], ['reglages', 'Réglages']] : r === 'admin' ? [HOME, ...ALL.filter(t => (st.feat[r] || []).includes(t[0]))] : ALL.filter(t => (st.feat[r] || []).includes(t[0]))
+const ICON = { pointage: '✅', mois: '📅', camp: '📣', stats: '📊', clients: '👥', cal: '🍽️', equipe: '🧑‍🍳', reglages: '⚙️' }
 const SURPLACE = '<span class="pastille">sur place</span>', COTE = '<span class="pastille cote">de côté</span>'
 
 // ---------- Écrans de connexion ----------
@@ -49,8 +51,8 @@ async function render() {
   try { body = await VIEWS[st.tab]() } catch (e) { body = `<div class="bandeau">Erreur : ${esc(e.message)}</div>` }
   app.innerHTML = `<header><img class="logo" src="assets/logo.png" alt="" onerror="this.remove()"><h1>${APP_NAME}</h1>
     <button class="ghost" data-act="logout">Quitter</button></header>
-    <nav>${tabs.map(([id, l]) => `<button class="${id === st.tab ? 'on' : ''}" data-act="tab" data-id="${id}">${l}</button>`).join('')}</nav>
-    <main>${body}</main><p class="discret" style="text-align:center;font-size:.7rem">v4</p>`
+${st.tab === 'accueil' ? '' : `<nav>${tabs.map(([id, l]) => `<button class="${id === st.tab ? 'on' : ''}" data-act="tab" data-id="${id}">${l}</button>`).join('')}</nav>`}
+    <main>${body}</main><p class="discret" style="text-align:center;font-size:.7rem">v5</p>`
   filt()
 }
 const filt = () => document.querySelectorAll('[data-n]').forEach(el => (el.hidden = !el.dataset.n.includes(st.q.toLowerCase())))
@@ -128,8 +130,16 @@ const VIEWS = {
       <p class="discret">Mois concerné, puis date limite de saisie.</p>
       <input id="cm" type="month"><input id="cd" type="datetime-local">
       <button data-act="campaign">Lancer la campagne</button>
-      <h3>Campagnes réalisées</h3>${data.map(c => `<div class="ligne"><span>${fmt(c.month, { month: 'long', year: 'numeric' })} <span class="discret">${c.status === 'open' ? 'jusqu\'au ' + new Date(c.deadline).toLocaleDateString('fr-FR') : 'clôturée'}</span></span>
+      <h3>Campagnes</h3>${data.map(c => `<div class="ligne"><span>${fmt(c.month, { month: 'long', year: 'numeric' })} <span class="discret">${c.status === 'open' ? 'jusqu\'au ' + new Date(c.deadline).toLocaleDateString('fr-FR') : 'clôturée'}</span></span>
         <span>${c.status === 'open' ? `<button class="ghost" data-act="closecamp" data-day="${c.month}">Clôturer</button>` : ''} <button class="ghost" data-act="resetcamp" data-day="${c.month}">Remettre à zéro</button></span></div>`).join('')}`
+  },
+
+  async accueil() {
+    const items = tabsFor(st.me.role).filter(t => t[0] !== 'accueil'), n = items.length
+    const pos = items.map((t, i) => { const a = (-90 + i * 360 / n) * Math.PI / 180; return [t, 50 + 38 * Math.cos(a), 50 + 38 * Math.sin(a)] })
+    return `<div class="carte"><svg class="liens" viewBox="0 0 100 100">${pos.map(([, x, y]) => `<line x1="50" y1="50" x2="${x}" y2="${y}"/>`).join('')}</svg>
+      <div class="coeur"><img src="assets/logo-accueil.png" alt="${APP_NAME}" onerror="this.replaceWith(document.createTextNode(this.alt))"></div>
+      ${pos.map(([t, x, y]) => `<button class="noeud" style="left:${x}%;top:${y}%" data-act="tab" data-id="${t[0]}">${ICON[t[0]] || ''} ${t[1]}</button>`).join('')}</div>`
   },
 
   async stats() {
