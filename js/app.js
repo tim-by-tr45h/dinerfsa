@@ -52,7 +52,7 @@ async function render() {
   app.innerHTML = `<header><img class="logo" src="assets/logo.png" alt="" onerror="this.remove()"><h1>${APP_NAME}</h1>
     <button class="ghost" data-act="logout">Quitter</button></header>
 ${st.tab === 'accueil' ? '' : `<nav>${tabs.map(([id, l]) => `<button class="${id === st.tab ? 'on' : ''}" data-act="tab" data-id="${id}">${l}</button>`).join('')}</nav>`}
-    <main>${body}</main><p class="discret" style="text-align:center;font-size:.7rem">v6</p>`
+    <main>${body}</main><p class="discret" style="text-align:center;font-size:.7rem">2026 by TR45H</p>`
   filt()
 }
 const filt = () => document.querySelectorAll('[data-n]').forEach(el => (el.hidden = !el.dataset.n.includes(st.q.toLowerCase())))
