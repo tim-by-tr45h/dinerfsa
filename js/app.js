@@ -14,11 +14,25 @@ const fmt = (d, o) => new Date(d + 'T12:00').toLocaleDateString('fr-FR', o)
 const name = x => x.profiles?.full_name || '?'
 const st = { feat: null, target: null, me: null, tab: null, month: today().slice(0, 8) + '01', day: today(), q: '' }
 
-const ALL = [['pointage', 'Pointage'], ['mois', 'Mois'], ['camp', 'Campagne'], ['stats', 'Stats'], ['clients', 'Clients'], ['cal', 'Mes dîners']]
-const DEF = { client: ['cal'], admin: ['pointage', 'mois', 'camp', 'stats', 'clients', 'cal'] }
+const ALL = [['pointage', 'Pointage'], ['mois', 'Mois'], ['camp', 'Campagne'], ['stats', 'Stats'], ['notif', 'Notifications'], ['clients', 'Clients'], ['cal', 'Mes dîners']]
+const DEF = { client: ['cal'], admin: ['pointage', 'mois', 'camp', 'stats', 'notif', 'clients', 'cal'] }
+// ---------- Notifications WhatsApp ----------
+const TPL = {
+  campagne: ['Lancement de campagne', 'Bonjour {prenom}, la campagne de réservation des dîners de {mois} est ouverte. Merci de cocher vos soirs sur le site avant la date limite : {lien}'],
+  rappel: ['Repas non réservés', "Bonjour {prenom}, vous n'avez encore réservé aucun dîner pour {mois}. Pensez à remplir votre calendrier avant la date limite : {lien}"],
+  autre: ['Autre', ''],
+}
+st.notif = { tpl: 'campagne', text: TPL.campagne[1], sel: new Set(), queue: [], i: 0, run: false, people: [], booked: new Set() }
+// Numéro saisi librement -> format international sans "+" (06 12 34 56 78 -> 33612345678)
+const waNum = p => { let n = String(p || '').replace(/[^\d+]/g, ''); if (n.startsWith('+')) n = n.slice(1); else if (n.startsWith('00')) n = n.slice(2); else if (n.startsWith('0')) n = '33' + n.slice(1); return /^\d{10,15}$/.test(n) ? n : null }
+const msg = (t, u) => t.replaceAll('{prenom}', (u.full_name || '').split(' ')[0]).replaceAll('{mois}', fmt(st.month, { month: 'long', year: 'numeric' })).replaceAll('{lien}', location.origin + location.pathname)
+const preview = () => { const n = st.notif; return msg(n.text, n.people.find(p => n.sel.has(p.id)) || { full_name: 'Prénom Nom' }) }
+const openCur = () => { const n = st.notif, u = n.queue[n.i]; window.open('https://wa.me/' + waNum(u.phone) + '?text=' + encodeURIComponent(msg(n.text, u)), '_blank') }
+const phoneBox = (v, id) => `<div class="bandeau"><strong>Numéro de téléphone (WhatsApp)</strong><input id="ph" type="tel" placeholder="06 12 34 56 78" value="${esc(v)}"><button data-act="savephone" data-id="${id}">Enregistrer</button><p class="discret">Utilisé uniquement pour prévenir par WhatsApp (campagne, rappels). Facultatif.</p></div>`
+
 const HOME = ['accueil', 'Accueil']
 const tabsFor = r => r === 'creator' ? [HOME, ...ALL, ['equipe', 'Équipe'], ['reglages', 'Réglages']] : r === 'admin' ? [HOME, ...ALL.filter(t => (st.feat[r] || []).includes(t[0]))] : ALL.filter(t => (st.feat[r] || []).includes(t[0]))
-const ICON = { pointage: '✅', mois: '📅', camp: '📣', stats: '📊', clients: '👥', cal: '🍽️', equipe: '🧑‍🍳', reglages: '⚙️' }
+const ICON = { pointage: '✅', mois: '📅', camp: '📣', stats: '📊', notif: '💬', clients: '👥', cal: '🍽️', equipe: '🧑‍🍳', reglages: '⚙️' }
 const SURPLACE = '<span class="pastille">sur place</span>', COTE = '<span class="pastille cote">de côté</span>'
 
 // ---------- Écrans de connexion ----------
@@ -52,7 +66,7 @@ async function render() {
   app.innerHTML = `<header><img class="logo" src="assets/logo.png" alt="" onerror="this.remove()"><h1>${APP_NAME}</h1>
     <button class="ghost" data-act="logout">Quitter</button></header>
 ${st.tab === 'accueil' ? '' : `<nav>${tabs.map(([id, l]) => `<button class="${id === st.tab ? 'on' : ''}" data-act="tab" data-id="${id}">${l}</button>`).join('')}</nav>`}
-    <main>${body}</main><p class="discret" style="text-align:center;font-size:.7rem">2026 by TR45H</p>`
+    <main>${body}</main><p class="discret" style="text-align:center;font-size:.7rem">v7</p>`
   filt()
 }
 const filt = () => document.querySelectorAll('[data-n]').forEach(el => (el.hidden = !el.dataset.n.includes(st.q.toLowerCase())))
@@ -88,7 +102,7 @@ const VIEWS = {
     }
     const n = Object.values(st.res).filter(x => !x.cancelled_at).length
     return `${monthNav()}<div class="bandeau">${banner}</div><div class="grille">${['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(j => `<span class="entete">${j}</span>`).join('')}${cells.join('')}</div>
-      <p class="discret">${n} dîner${n > 1 ? 's' : ''} réservé${n > 1 ? 's' : ''} ce mois-ci.</p>`
+      <p class="discret">${n} dîner${n > 1 ? 's' : ''} réservé${n > 1 ? 's' : ''} ce mois-ci.</p>${god ? '' : phoneBox(st.me.phone, st.me.id)}`
   },
 
   async pointage() {
@@ -134,6 +148,32 @@ const VIEWS = {
         <span>${c.status === 'open' ? `<button class="ghost" data-act="closecamp" data-day="${c.month}">Clôturer</button>` : ''} <button class="ghost" data-act="resetcamp" data-day="${c.month}">Remettre à zéro</button></span></div>`).join('')}`
   },
 
+  async notif() {
+    const n = st.notif, [a, z] = range(daysOf(st.month)), mois = fmt(st.month, { month: 'long', year: 'numeric' })
+    const [p, r] = await Promise.all([
+      sb.from('profiles').select('id,full_name,phone').eq('active', true).eq('role', 'client').order('full_name'),
+      all(() => sb.from('reservations').select('user_id').is('cancelled_at', null).gte('day', a).lte('day', z).order('id')).then(data => ({ data }))])
+    n.people = p.data; n.booked = new Set(r.data.map(x => x.user_id))
+    const cur = n.queue[n.i]
+    const suivi = n.run ? `<div class="suivi"><strong>${n.i + 1}/${n.queue.length} : ${esc(cur.full_name)}</strong>
+      <p class="discret">Envoyez le message dans WhatsApp, revenez ici, puis touchez le bouton ci-dessous.</p>
+      <button data-act="next">${n.i + 1 === n.queue.length ? 'Terminer' : 'Destinataire suivant'}</button>
+      <div class="ligne"><button class="ghost" data-act="reopen">Rouvrir WhatsApp</button><button class="ghost" data-act="prev">Précédent</button><button class="ghost" data-act="stop">Arrêter</button></div></div>` : ''
+    return `${suivi}<h3>Message</h3>
+      <select id="tpl">${Object.entries(TPL).map(([k, v]) => `<option value="${k}" ${k === n.tpl ? 'selected' : ''}>${v[0]}</option>`).join('')}</select>
+      <textarea id="msg" rows="6" placeholder="Votre message">${esc(n.text)}</textarea>
+      <p class="discret">{prenom}, {mois} et {lien} sont remplacés automatiquement.</p>
+      <div class="bandeau" id="prev" style="white-space:pre-wrap">${esc(preview())}</div>
+      <button class="ghost" data-act="copy">Copier le message</button>
+      <h3>Destinataires : ${n.sel.size} sélectionné${n.sel.size > 1 ? 's' : ''}</h3>
+      ${monthNav()}
+      <button class="ghost" data-act="presel">Présélectionner ceux qui n'ont rien réservé en ${mois}</button>
+      <div class="ligne"><button class="ghost" data-act="selall">Tout sélectionner</button><button class="ghost" data-act="selnone">Tout désélectionner</button></div>
+      <input id="q" placeholder="Rechercher un client" value="${esc(st.q)}">
+      ${n.people.map(u => { const ok = !!waNum(u.phone); return `<label class="ligne" data-n="${esc(u.full_name.toLowerCase())}"><span><input type="checkbox" style="width:auto;margin:0 8px 0 0" data-sel="${u.id}" ${n.sel.has(u.id) ? 'checked' : ''} ${ok ? '' : 'disabled'}>${esc(u.full_name)}</span><span class="discret">${!ok ? 'numéro manquant' : n.booked.has(u.id) ? '' : 'rien réservé'}</span></label>` }).join('')}
+      <button data-act="start" style="width:100%;padding:14px;margin-top:10px">Démarrer les envois</button>`
+  },
+
   async accueil() {
     const items = tabsFor(st.me.role).filter(t => t[0] !== 'accueil'), n = items.length
     const pos = items.map((t, i) => { const a = (-90 + i * 360 / n) * Math.PI / 180; return [t, 50 + 38 * Math.cos(a), 50 + 38 * Math.sin(a)] })
@@ -161,7 +201,10 @@ const VIEWS = {
   },
 
   async clients() {
-    if (st.target) return `<button class="ghost" data-act="back">‹ Retour aux clients</button><h3>${esc(st.targetName)}</h3>` + await VIEWS.cal()
+    if (st.target) {
+      const pp = await sb.from('profiles').select('phone').eq('id', st.target).single()
+      return `<button class="ghost" data-act="back">‹ Retour aux clients</button><h3>${esc(st.targetName)}</h3>${phoneBox(pp.data?.phone, st.target)}` + await VIEWS.cal()
+    }
     const { data } = await sb.from('profiles').select('id,full_name').eq('active', true).eq('role', 'client').order('full_name')
     return `<input id="q" placeholder="Rechercher un client" value="${esc(st.q)}">${data.map(u => `<div class="ligne" data-n="${esc(u.full_name.toLowerCase())}"><span>${esc(u.full_name)}</span><button data-act="edit" data-id="${u.id}" data-name="${esc(u.full_name)}">Modifier</button></div>`).join('')}`
   },
@@ -196,6 +239,30 @@ const ACT = {
   tab: b => { st.tab = b.dataset.id; st.target = null; st.q = '' },
   edit: b => { st.target = b.dataset.id; st.targetName = b.dataset.name },
   back: () => { st.target = null },
+  async savephone(b) {
+    const v = $('#ph').value.trim() || null
+    if (v && !waNum(v)) return alert('Numéro invalide. Exemple : 06 12 34 56 78')
+    const { error } = await sb.from('profiles').update({ phone: v }).eq('id', b.dataset.id)
+    if (error) return alert(error.message)
+    if (b.dataset.id === st.me.id) st.me.phone = v
+    alert('Numéro enregistré.')
+  },
+  async copy() { await navigator.clipboard.writeText(st.notif.text); alert('Message copié.') },
+  selall: () => { const n = st.notif; n.sel = new Set(n.people.filter(u => waNum(u.phone)).map(u => u.id)) },
+  selnone: () => { st.notif.sel = new Set() },
+  presel: () => { const n = st.notif; n.sel = new Set(n.people.filter(u => waNum(u.phone) && !n.booked.has(u.id)).map(u => u.id)) },
+  start() {
+    const n = st.notif
+    if (!n.text.trim()) return alert('Le message est vide.')
+    if (!n.sel.size) return alert('Aucun destinataire sélectionné.')
+    n.queue = n.people.filter(u => n.sel.has(u.id) && waNum(u.phone))
+    if (!n.queue.length) return alert('Aucun numéro valide parmi les destinataires.')
+    n.i = 0; n.run = true; openCur()
+  },
+  next() { const n = st.notif; if (n.i + 1 >= n.queue.length) { n.run = false; return alert('Tous les destinataires ont été traités.') } n.i++; openCur() },
+  prev() { const n = st.notif; if (n.i > 0) { n.i--; openCur() } },
+  reopen: () => openCur(),
+  stop: () => { st.notif.run = false },
   async resetcamp(b) {
     if (!confirm('Supprimer cette campagne, toutes ses réservations, ses soirs fermés et ses clôtures de service ? Action irréversible.')) return
     const d = daysOf(b.dataset.day), z = d.at(-1)
@@ -232,10 +299,15 @@ app.addEventListener('click', async e => {
   await ACT[b.dataset.act](b)
   if (st.me) await render()
 })
-app.addEventListener('input', e => { if (e.target.id === 'q') { st.q = e.target.value; filt() } })
+app.addEventListener('input', e => {
+  if (e.target.id === 'q') { st.q = e.target.value; filt() }
+  if (e.target.id === 'msg') { st.notif.text = e.target.value; $('#prev').textContent = preview() }
+})
 app.addEventListener('change', async e => {
   const t = e.target
   if (t.id === 'dpick') { st.day = t.value || today(); return render() }
+  if (t.id === 'tpl') { st.notif.tpl = t.value; st.notif.text = TPL[t.value][1]; return render() }
+  if (t.dataset.sel) { const n = st.notif; t.checked ? n.sel.add(t.dataset.sel) : n.sel.delete(t.dataset.sel); return render() }
   if (t.dataset.feat) {
     const [r, k] = t.dataset.feat.split(':'), set = new Set(st.feat[r]); t.checked ? set.add(k) : set.delete(k); st.feat[r] = [...set]
     return fail(await sb.from('settings').upsert({ key: 'features', value: st.feat }))
